@@ -1,0 +1,105 @@
+import java.util.*;
+
+public class Laboratorio16 {
+    public static void main(String[] args) {
+        Mapa mapa = new Mapa(10, 10, "bosque");
+        mapa.mostrarMapa();
+    }
+}
+
+class Soldado {
+    private int nivelVida;
+
+    public Soldado(int nivelVida) {
+        this.nivelVida = nivelVida;
+    }
+
+    public int getNivelVida() {
+        return nivelVida;
+    }
+
+    public void incrementarVida(int bonus) {
+        this.nivelVida += bonus;
+    }
+}
+
+class Ejercito {
+    private List<Soldado> soldados;
+
+    public Ejercito(int cantidadSoldados, int nivelVidaInicial) {
+        soldados = new ArrayList<>();
+        for (int i = 0; i < cantidadSoldados; i++) {
+            soldados.add(new Soldado(nivelVidaInicial));
+        }
+    }
+
+    public List<Soldado> getSoldados() {
+        return soldados;
+    }
+
+    public void aplicarBonus(int bonus) {
+        for (Soldado soldado : soldados) {
+            soldado.incrementarVida(bonus);
+        }
+    }
+
+    public int calcularNivelVidaTotal() {
+        return soldados.stream().mapToInt(Soldado::getNivelVida).sum();
+    }
+}
+
+class Mapa {
+    private Ejercito[][] tablero;
+    private String tipoTerritorio;
+    private Random random = new Random();
+
+    public Mapa(int filas, int columnas, String tipoTerritorio) {
+        tablero = new Ejercito[filas][columnas];
+        this.tipoTerritorio = tipoTerritorio;
+        generarEjercitosAleatorios();
+        aplicarBonusTerritorio();
+    }
+
+    private void generarEjercitosAleatorios() {
+        int numEjercitos = random.nextInt(10)+1;
+        for (int i=0; i < numEjercitos; i++) {
+            int fila = random.nextInt(tablero.length);
+            int columna = random.nextInt(tablero[0].length);
+            if (tablero[fila][columna] == null) {
+                int cantidadSoldados = random.nextInt(10) + 1;
+                tablero[fila][columna] = new Ejercito(cantidadSoldados, 10);
+            }
+        }
+    }
+
+    private void aplicarBonusTerritorio() {
+        int bonus = 1;
+        for (int i = 0; i < tablero.length; i++) {
+            for (int j = 0; j < tablero[i].length; j++) {
+                Ejercito ejercito = tablero[i][j];
+                if (ejercito != null && aplicarBonus(ejercito)) {
+                    ejercito.aplicarBonus(bonus);
+                }
+            }
+        }
+    }
+
+    private boolean aplicarBonus(Ejercito ejercito) {
+  
+        return tipoTerritorio.equals("bosque") || tipoTerritorio.equals("montaña");
+
+    }
+
+    public void mostrarMapa() {
+        for (int i = 0; i < tablero.length; i++) {
+            for (int j = 0; j < tablero[i].length; j++) {
+                if (tablero[i][j] != null) {
+                    System.out.print("E ");
+                } else {
+                    System.out.print(". ");
+                }
+            }
+            System.out.println();
+        }
+    }
+}

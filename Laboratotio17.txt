@@ -1,0 +1,195 @@
+import java.util.*;
+
+public class Laboratorio17 {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        Mapa mapa = new Mapa(10, 10, "bosque");
+        boolean juegoTerminado = false;
+        String jugadorActual = "Inglaterra";  
+        
+        while (!juegoTerminado) {
+            mapa.mostrarMapa();
+            System.out.println("Turno de " + jugadorActual);
+            
+            System.out.print("Ingrese la fila del ejercito a mover: ");
+            int fila = sc.nextInt();
+            System.out.print("Ingrese la columna del ejercito a mover: ");
+            int columna = sc.nextInt();
+            System.out.print("Ingrese la direccion (arriba, abajo, izquierda, derecha): ");
+            String direccion = sc.next();
+            
+            if (mapa.moverEjercito(fila, columna, direccion, jugadorActual)) {
+
+                jugadorActual = jugadorActual.equals("Inglaterra") ? "Francia" : "Inglaterra";
+            } else {
+                System.out.println("Movimiento inválido. Intente de nuevo.");
+            }
+            
+            if (mapa.reinoSinEjercitos("Inglaterra")) {
+                System.out.println("Francia ha ganado el juego");
+                juegoTerminado = true;
+            } else if (mapa.reinoSinEjercitos("Francia")) {
+                System.out.println("Inglaterra ha ganado el juego");
+                juegoTerminado = true;
+            }
+        }
+    }
+}
+
+class Soldado {
+    private int nivelVida;
+
+    public Soldado(int nivelVida) {
+        this.nivelVida = nivelVida;
+    }
+
+    public int getNivelVida() {
+        return nivelVida;
+    }
+
+    public void incrementarVida(int bonus) {
+        this.nivelVida += bonus;
+    }
+}
+
+class Ejercito {
+    private List<Soldado> soldados;
+    private String reino;
+
+    public Ejercito(int cantidadSoldados, int nivelVidaInicial, String reino) {
+        this.soldados = new ArrayList<>();
+        this.reino = reino;
+        for (int i = 0; i < cantidadSoldados; i++) {
+            soldados.add(new Soldado(nivelVidaInicial));
+        }
+    }
+
+    public String getReino() {
+        return reino;
+    }
+
+    public List<Soldado> getSoldados() {
+        return soldados;
+    }
+
+    public int calcularNivelVidaTotal() {
+        return soldados.stream().mapToInt(Soldado::getNivelVida).sum();
+    }
+
+    public void aplicarBonus(int bonus) {
+        for (Soldado soldado : soldados) {
+            soldado.incrementarVida(bonus);
+        }
+    }
+}
+
+class Mapa {
+    private Ejercito[][] tablero;
+    private String tipoTerritorio;
+    private Random random = new Random();
+
+    public Mapa(int filas, int columnas, String tipoTerritorio) {
+        this.tablero = new Ejercito[filas][columnas];
+        this.tipoTerritorio = tipoTerritorio;
+        generarEjercitosAleatorios();
+        aplicarBonusTerritorio();
+    }
+
+    private void generarEjercitosAleatorios() {
+        int numEjercitos = random.nextInt(5)+1;
+        String[] reinos = {"Inglaterra", "Francia"};
+        
+        for (String reino : reinos) {
+            for (int i = 0; i < numEjercitos; i++) {
+                int fila, columna;
+                do {
+                    fila = random.nextInt(tablero.length);
+                    columna = random.nextInt(tablero[0].length);
+                } while (tablero[fila][columna] != null);
+                
+                int cantidadSoldados = random.nextInt(10) + 1;
+                tablero[fila][columna] = new Ejercito(cantidadSoldados, 10, reino);
+            }
+        }
+    }
+
+    private void aplicarBonusTerritorio() {
+        int bonus=1;
+        for (int i=0; i < tablero.length; i++) {
+            for (int j=0; j < tablero[i].length; j++) {
+                Ejercito ejercito = tablero[i][j];
+                if (ejercito != null && ejercito.getReino().equals("Inglaterra") && tipoTerritorio.equals("bosque")) {
+                    ejercito.aplicarBonus(bonus);
+                }
+            }
+        }
+    }
+
+    public boolean moverEjercito(int fila, int columna, String direccion, String reino) {
+        if (!posicionValida(fila, columna) || tablero[fila][columna] == null || 
+            !tablero[fila][columna].getReino().equals(reino)) {
+            return false;
+        }
+
+        int nuevaFila = fila, nuevaColumna = columna;
+        switch (direccion.toLowerCase()) {
+            case "arriba": nuevaFila--; break;
+            case "abajo": nuevaFila++; break;
+            case "izquierda": nuevaColumna--; break;
+            case "derecha": nuevaColumna++; break;
+            default: return false;
+        }
+
+        if (!posicionValida(nuevaFila, nuevaColumna)) return false;
+
+        if (tablero[nuevaFila][nuevaColumna] != null) {
+            Ejercito enemigo = tablero[nuevaFila][nuevaColumna];
+            if (!enemigo.getReino().equals(reino)) {
+                return resolverBatalla(tablero[fila][columna], enemigo, nuevaFila, nuevaColumna);
+            } else {
+                return false;
+            }
+        } else {
+            tablero[nuevaFila][nuevaColumna] = tablero[fila][columna];
+            tablero[fila][columna] = null;
+            return true;
+        }
+    }
+
+    private boolean posicionValida(int fila, int columna) {
+        return fila >= 0 && fila < tablero.length && columna >= 0 && columna < tablero[0].length;
+    }
+
+    private boolean resolverBatalla(Ejercito ejercito1, Ejercito ejercito2, int fila, int columna) {
+        int vidaTotal1 = ejercito1.calcularNivelVidaTotal();
+        int vidaTotal2 = ejercito2.calcularNivelVidaTotal();
+        double probabilidad1 = vidaTotal1 / (double) (vidaTotal1 + vidaTotal2);
+        
+        if (random.nextDouble() < probabilidad1) {
+            ejercito1.aplicarBonus(1);
+            tablero[fila][columna] = ejercito1;
+            return true;
+        } else {
+            tablero[fila][columna] = ejercito2;
+            return false;
+        }
+    }
+
+    public boolean reinoSinEjercitos(String reino) {
+        for (Ejercito[] fila : tablero) {
+            for (Ejercito ejercito : fila) {
+                if (ejercito != null && ejercito.getReino().equals(reino)) return false;
+            }
+        }
+        return true;
+    }
+
+    public void mostrarMapa() {
+        for (Ejercito[] fila : tablero) {
+            for (Ejercito ejercito : fila) {
+                System.out.print(ejercito == null ? ". " : (ejercito.getReino().equals("Inglaterra") ? "I " : "F "));
+            }
+            System.out.println();
+        }
+    }
+}
